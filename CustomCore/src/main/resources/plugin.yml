@@ -1,0 +1,45 @@
+name: CustomCore
+version: '1.0.0'
+main: com.customcore.plugin.CustomCorePlugin
+api-version: '1.21'
+author: DeinName
+description: Custom Scoreboard, Ränge, Chatcolors, Tablist - alles per Command editierbar, plus JS-Scripting-Layer
+
+commands:
+  scoreboard:
+    description: Verwaltet das Custom Scoreboard
+    usage: /scoreboard <edit|reload|toggle>
+    permission: customcore.scoreboard.admin
+  rank:
+    description: Verwaltet Custom Ränge
+    usage: /rank <create|delete|edit|set|list>
+    permission: customcore.rank.admin
+  tablist:
+    description: Verwaltet die Custom Tablist
+    usage: /tablist <edit|reload>
+    permission: customcore.tablist.admin
+  chatcolor:
+    description: Setzt deine Chatfarbe (falls per Rang erlaubt)
+    usage: /chatcolor <farbe>
+    permission: customcore.chatcolor.use
+  ccscript:
+    description: Verwaltet JS-Skripte (laden/entladen/reload)
+    usage: /ccscript <reload|list|run>
+    permission: customcore.script.admin
+
+permissions:
+  customcore.scoreboard.admin:
+    description: Zugriff auf Scoreboard-Editor
+    default: op
+  customcore.rank.admin:
+    description: Zugriff auf Rang-Verwaltung
+    default: op
+  customcore.tablist.admin:
+    description: Zugriff auf Tablist-Editor
+    default: op
+  customcore.chatcolor.use:
+    description: Erlaubt das Setzen der eigenen Chatfarbe
+    default: false
+  customcore.script.admin:
+    description: Zugriff auf Script-Verwaltung
+    default: op

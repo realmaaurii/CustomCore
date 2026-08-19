@@ -1,0 +1,27 @@
+# CustomCore Konfiguration
+
+scoreboard:
+  enabled: true
+  title: "&6&lMEIN SERVER"
+  lines:
+    - "&7------------------"
+    - "&fSpieler: &a%player_name%"
+    - "&fRang: &e%customcore_rank%"
+    - "&7------------------"
+    - "&fOnline: &a%server_online%"
+
+tablist:
+  enabled: true
+  header: "&6&lMEIN SERVER\n&7Willkommen zurück!"
+  footer: "&7Rang: %customcore_rank% &8| &7Online: %server_online%"
+
+chat:
+  format: "%customcore_prefix% &f%player_name% &8» &f%message%"
+  allow-player-chatcolor: false
+
+ranks:
+  default: default
+
+scripts:
+  folder: scripts
+  auto-load: true
