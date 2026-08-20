@@ -83,6 +83,11 @@ public class CustomCorePlugin extends JavaPlugin {
         getCommand("pay").setExecutor(new PayCommand(this));
         getCommand("store").setExecutor(new StoreCommand(this));
 
+        // Scoreboard automatisch alle 2 Sekunden neu aufbauen, damit sich
+        // ändernde Werte wie Credits oder Spielzeit live sichtbar bleiben,
+        // ohne dass jede einzelne Stelle im Code manuell ein Update auslösen muss.
+        org.bukkit.Bukkit.getScheduler().runTaskTimer(this, () -> scoreboardManager.refreshAll(), 40L, 40L);
+
         getLogger().info("CustomCore wurde aktiviert.");
     }
 
@@ -111,4 +116,3 @@ public class CustomCorePlugin extends JavaPlugin {
     public StoreManager store() { return storeManager; }
     public StoreGUI storeGUI() { return storeGUI; }
 }
-
