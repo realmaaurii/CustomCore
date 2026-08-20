@@ -32,19 +32,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- GraalJS für die JavaScript-Scripting-Ebene -->
-        <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js</artifactId>
-            <version>23.1.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js-scriptengine</artifactId>
-            <version>23.1.2</version>
-        </dependency>
-    </dependencies>
-
+      <dependency> <groupId>org.graalvm.polyglot</groupId> <artifactId>polyglot</artifactId> <version>24.1.1</version> </dependency> <dependency> <groupId>org.graalvm.polyglot</groupId> <artifactId>js-community</artifactId> <version>24.1.1</version> <type>pom</type> </dependency>
     <build>
         <finalName>CustomCore</finalName>
         <plugins>
