@@ -16,7 +16,6 @@
     </properties>
 
     <repositories>
-        <!-- Paper API -->
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
@@ -24,7 +23,6 @@
     </repositories>
 
     <dependencies>
-        <!-- Paper API 1.21 -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
@@ -32,23 +30,22 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- GraalJS für die JavaScript-Scripting-Ebene -->
         <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js</artifactId>
-            <version>23.1.2</version>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>24.1.1</version>
         </dependency>
         <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js-scriptengine</artifactId>
-            <version>23.1.2</version>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js-community</artifactId>
+            <version>24.1.1</version>
+            <type>pom</type>
         </dependency>
     </dependencies>
 
     <build>
         <finalName>CustomCore</finalName>
         <plugins>
-            <!-- Shaded Jar, damit GraalJS im finalen Plugin-Jar mitgeliefert wird -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
