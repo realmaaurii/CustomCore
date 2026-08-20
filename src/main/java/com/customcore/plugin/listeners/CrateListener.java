@@ -31,7 +31,7 @@ public class CrateListener implements Listener {
         Player player = event.getPlayer();
 
         // Fall 1: Spieler klickt auf eine bereits platzierte Session-Kiste
-        if (clicked.getType() == Material.CHEST) {
+        if (clicked.getType() == Material.ENDER_CHEST) {
             boolean handled = plugin.crates().handleChestClick(player, clicked);
             if (handled) {
                 event.setCancelled(true); // verhindert, dass die normale (leere) Kisten-GUI aufgeht

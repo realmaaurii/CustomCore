@@ -2,10 +2,13 @@ package com.customcore.plugin;
 
 import com.customcore.plugin.commands.*;
 import com.customcore.plugin.crates.CrateManager;
+import com.customcore.plugin.economy.EconomyManager;
 import com.customcore.plugin.gui.ScoreboardEditGUI;
 import com.customcore.plugin.listeners.CrateListener;
 import com.customcore.plugin.managers.*;
 import com.customcore.plugin.script.ScriptManager;
+import com.customcore.plugin.store.StoreGUI;
+import com.customcore.plugin.store.StoreManager;
 import com.customcore.plugin.util.ChatInputManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,6 +24,9 @@ public class CustomCorePlugin extends JavaPlugin {
     private ChatInputManager chatInputManager;
     private ScoreboardEditGUI scoreboardEditGUI;
     private CrateManager crateManager;
+    private EconomyManager economyManager;
+    private StoreManager storeManager;
+    private StoreGUI storeGUI;
 
     @Override
     public void onEnable() {
@@ -36,11 +42,16 @@ public class CustomCorePlugin extends JavaPlugin {
         this.scriptManager = new ScriptManager(this);
         this.scoreboardEditGUI = new ScoreboardEditGUI(this);
         this.crateManager = new CrateManager(this);
+        this.economyManager = new EconomyManager(this);
+        this.storeManager = new StoreManager(this);
+        this.storeGUI = new StoreGUI(this);
 
         rankManager.load();
         scoreboardManager.load();
         tablistManager.load();
         crateManager.load();
+        economyManager.load();
+        storeManager.load();
         scriptManager.setup();
         if (getConfig().getBoolean("scripts.auto-load", true)) {
             scriptManager.loadAllScripts();
@@ -53,6 +64,7 @@ public class CustomCorePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(tablistManager, this);
         getServer().getPluginManager().registerEvents(scoreboardEditGUI, this);
         getServer().getPluginManager().registerEvents(new CrateListener(this), this);
+        getServer().getPluginManager().registerEvents(storeGUI, this);
 
         // Commands
         getCommand("scoreboard").setExecutor(new ScoreboardCommand(this));
@@ -66,6 +78,10 @@ public class CustomCorePlugin extends JavaPlugin {
         getCommand("ccscript").setTabCompleter(new ScriptCommand(this));
         getCommand("crate").setExecutor(new CrateCommand(this));
         getCommand("crate").setTabCompleter((CrateCommand) getCommand("crate").getExecutor());
+        getCommand("credits").setExecutor(new CreditsCommand(this));
+        getCommand("credits").setTabCompleter((CreditsCommand) getCommand("credits").getExecutor());
+        getCommand("pay").setExecutor(new PayCommand(this));
+        getCommand("store").setExecutor(new StoreCommand(this));
 
         getLogger().info("CustomCore wurde aktiviert.");
     }
@@ -74,6 +90,7 @@ public class CustomCorePlugin extends JavaPlugin {
     public void onDisable() {
         if (scoreboardManager != null) scoreboardManager.save();
         if (rankManager != null) rankManager.save();
+        if (economyManager != null) economyManager.save();
         if (scriptManager != null) scriptManager.shutdown();
         getLogger().info("CustomCore wurde deaktiviert.");
     }
@@ -90,4 +107,8 @@ public class CustomCorePlugin extends JavaPlugin {
     public ChatInputManager chatInput() { return chatInputManager; }
     public ScoreboardEditGUI scoreboardGUI() { return scoreboardEditGUI; }
     public CrateManager crates() { return crateManager; }
+    public EconomyManager economy() { return economyManager; }
+    public StoreManager store() { return storeManager; }
+    public StoreGUI storeGUI() { return storeGUI; }
 }
+

@@ -30,6 +30,15 @@ commands:
     description: Verwaltet Crates und vergibt Crate-Keys
     usage: /crate <give|list|reload>
     permission: customcore.crate.admin
+  credits:
+    description: Zeigt Guthaben an / verwaltet Credits (Admin)
+    usage: /credits [spieler] | /credits give|set|take <spieler> <betrag>
+  pay:
+    description: Sendet Credits an einen anderen Spieler
+    usage: /pay <spieler> <betrag>
+  store:
+    description: Öffnet den Credits-Shop
+    usage: /store
 
 permissions:
   customcore.scoreboard.admin:
@@ -49,4 +58,7 @@ permissions:
     default: op
   customcore.crate.admin:
     description: Zugriff auf Crate-Verwaltung (Keys vergeben, reload)
+    default: op
+  customcore.credits.admin:
+    description: Erlaubt Credits an Spieler zu geben/setzen/abziehen
     default: op

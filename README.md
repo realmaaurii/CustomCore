@@ -58,6 +58,112 @@ Bei jedem weiteren Push wird automatisch neu gebaut, du musst also nach
 | `/tablist reload` | s.o. | Lädt `tablist.yml` neu |
 | `/chatcolor <code>` | `customcore.chatcolor.use` (default: false) | Eigene Chatfarbe wählen (muss in config.yml erlaubt sein) |
 | `/ccscript reload\|list\|run <datei>\|unload <datei>` | `customcore.script.admin` (default: op) | JS-Skripte verwalten |
+| `/crate give <spieler> <crateid> [anzahl]` | `customcore.crate.admin` (default: op) | Crate-Key an Spieler geben |
+| `/crate list` / `reload` | s.o. | Crates auflisten / `crates.yml` neu laden |
+| `/credits [spieler]` | jeder | Eigenes oder fremdes Guthaben anzeigen |
+| `/credits give\|set\|take <spieler> <betrag>` | `customcore.credits.admin` (default: op) | Credits verwalten |
+| `/pay <spieler> <betrag>` | jeder | Credits an einen anderen Spieler senden |
+| `/store` | jeder | Öffnet den Credits-Shop |
+
+## Credits-Wirtschaft & Store
+
+Ein eigenständiges Guthabensystem (keine Abhängigkeit von Vault nötig) -
+Guthaben wird in `plugins/CustomCore/economy.yml` gespeichert. Spieler
+prüfen ihr Guthaben mit `/credits`, überweisen sich gegenseitig Geld mit
+`/pay <spieler> <betrag>`.
+
+`/store` öffnet ein Inventory-Menü mit kaufbaren Einträgen, konfiguriert in
+`plugins/CustomCore/store.yml`:
+
+```yaml
+items:
+  - id: crate_common
+    icon: ENDER_CHEST
+    display-name: "&aCommon Crate Key"
+    description: "&7Öffnet eine Common Crate"
+    price: 500
+    action: CRATE_KEY
+    crate-id: common
+    crate-amount: 1
+
+  - id: rank_vip
+    icon: DIAMOND
+    display-name: "&b&lVIP Rang"
+    description: "&7Schaltet den VIP-Rang frei"
+    price: 5000
+    action: RANK
+    rank-id: vip
+```
+
+`action` kann sein:
+- `ITEM` - gibt ein Item (`item-material`, `item-amount`)
+- `RANK` - setzt den Rang des Spielers (`rank-id`, muss in `ranks.yml` existieren)
+- `CRATE_KEY` - gibt einen Crate-Key (`crate-id`, `crate-amount`)
+- `COMMAND` - führt einen Befehl als Konsole aus (`command`, `%player%` wird ersetzt)
+
+Crates können außerdem direkt Credits als Belohnung ausschütten
+(`type: CREDITS` in `crates.yml`, siehe unten) - so lässt sich ein
+kompletter Kreislauf aus Spielen → Credits verdienen → im Store ausgeben
+bauen.
+
+## Crate-System ("Wähle 6 von 8")
+
+Ein Spieler mit einem Crate-Key (standardmäßig eine benannte Enderchest,
+per `/crate give <spieler> common` erhältlich) rechtsklickt damit auf den
+Boden. Um ihn herum erscheinen 8 normale Kisten im Kreis. Klickt er eine
+an, verschwindet sie sofort und er bekommt zufällig eine Belohnung aus dem
+Pool (gewichtete Zufallsauswahl) – kein Kisten-Inventar zum Durchsuchen,
+die Belohnung wird direkt ausgezahlt. Nach 6 angeklickten Kisten
+verschwinden die restlichen 2 automatisch und der Boden wird wieder frei.
+Falls eine Crate 45 Sekunden lang nicht abgeschlossen wird, wird sie
+automatisch zurückgesetzt (falls der Spieler offline geht o. Ä.).
+
+Belohnungen werden in `plugins/CustomCore/crates.yml` konfiguriert:
+
+```yaml
+crates:
+  common:
+    display-name: "&aCommon Crate"
+    key-material: ENDER_CHEST
+    rewards:
+      - id: diamonds
+        type: ITEM
+        display-name: "&b5 Diamanten"
+        weight: 10
+        category: "&5&lEPIC ITEMS"
+        material: DIAMOND
+        amount: 5
+      - id: xp
+        type: COMMAND
+        display-name: "&d150 XP"
+        weight: 6
+        category: "&5&lEPIC ITEMS"
+        command: "xp add %player% 150"
+```
+
+`weight` bestimmt die Chance relativ zu den anderen Einträgen (höher =
+wahrscheinlicher) - die Prozentangabe im Key-Tooltip wird automatisch
+daraus berechnet. `category` ist optional und gruppiert die Anzeige im
+Tooltip des Crate-Keys (z. B. "LEGENDARY ITEMS", "EPIC ITEMS", "COMMON
+ITEMS") - alle Belohnungen mit derselben Kategorie werden zusammen unter
+einer farbigen Überschrift angezeigt, ähnlich wie bei bekannten
+Crate-Plugins. Ohne `category` landen Einträge in einer Sammelgruppe
+"WEITERE BELOHNUNGEN". `type` kann `ITEM`, `CREDITS` (mit `credits: <zahl>`)
+oder `COMMAND` sein - bei `COMMAND` wird der Befehl als Konsole ausgeführt,
+`%player%` wird durch den Spielernamen ersetzt.
+
+Die 8 Kisten erscheinen als Enderchests in 4 Paaren um den Spieler herum
+(Norden/Osten/Süden/Westen), mit einer sichtbaren Lücke zwischen den
+beiden Kisten pro Richtung. Dafür wird auf jeder Seite ca. 3-4 Blöcke
+freier Platz benötigt.
+
+Nach Änderungen an der Datei reicht `/crate reload` (bereits ausgeteilte
+Keys zeigen die alte Lore weiter an - neu vergebene Keys per `/crate give`
+zeigen den aktuellen Stand).
+
+Du kannst beliebig viele eigene Crate-Typen unter `crates.<id>` in der
+Datei hinzufügen (z. B. `crates.legendary`) – jeder erhält automatisch
+sein eigenes Key-Item über `/crate give <spieler> <id>`.
 
 Alle Admin-Permissions sind standardmäßig `op` – vergib sie über
 LuckPerms/Vault gezielt an Moderatoren, falls gewünscht, statt vollen OP zu geben.
