@@ -3,6 +3,7 @@ package com.customcore.plugin.store;
 import com.customcore.plugin.CustomCorePlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -18,7 +19,10 @@ public class StoreManager {
 
     private final CustomCorePlugin plugin;
     private final File file;
-    private final List<StoreItem> items = new ArrayList<>();
+    private final List<StoreCategory> categories = new ArrayList<>();
+
+    private double bundleDiscount3 = 0.10; // 10% Rabatt beim 3er-Bundle
+    private double bundleDiscount9 = 0.20; // 20% Rabatt beim 9er-Bundle
 
     public StoreManager(CustomCorePlugin plugin) {
         this.plugin = plugin;
@@ -29,61 +33,99 @@ public class StoreManager {
         if (!file.exists()) createDefaultFile();
 
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
-        items.clear();
+        categories.clear();
 
-        List<Map<?, ?>> entries = cfg.getMapList("items");
-        for (Map<?, ?> e : entries) {
-            String id = String.valueOf(e.get("id"));
+        bundleDiscount3 = cfg.getDouble("settings.bundle-discount-3", 0.10);
+        bundleDiscount9 = cfg.getDouble("settings.bundle-discount-9", 0.20);
 
-            Object iconObj = e.get("icon");
-            Material icon = Material.matchMaterial(iconObj != null ? String.valueOf(iconObj) : "STONE");
-            if (icon == null) icon = Material.STONE;
+        ConfigurationSection categoriesSection = cfg.getConfigurationSection("categories");
+        if (categoriesSection == null) return;
 
-            Object displayObj = e.get("display-name");
-            String display = displayObj != null ? String.valueOf(displayObj) : id;
+        for (String catId : categoriesSection.getKeys(false)) {
+            ConfigurationSection catSection = categoriesSection.getConfigurationSection(catId);
+            if (catSection == null) continue;
 
-            String description = e.get("description") != null ? String.valueOf(e.get("description")) : "";
-            long price = e.get("price") instanceof Number n ? n.longValue() : 0;
+            Material icon = Material.matchMaterial(catSection.getString("icon", "CHEST"));
+            if (icon == null) icon = Material.CHEST;
+            String catDisplay = catSection.getString("display-name", catId);
 
-            Object actionObj = e.get("action");
-            String actionStr = actionObj != null ? String.valueOf(actionObj) : "COMMAND";
-            StoreItem.Action action;
-            try {
-                action = StoreItem.Action.valueOf(actionStr.toUpperCase());
-            } catch (IllegalArgumentException ex) {
-                action = StoreItem.Action.COMMAND;
+            StoreCategory category = new StoreCategory(catId, catDisplay, icon);
+
+            List<Map<?, ?>> entries = catSection.getMapList("items");
+            for (Map<?, ?> e : entries) {
+                category.addItem(parseItem(e));
             }
 
-            Material itemMat = null;
-            int itemAmount = 1;
-            if (e.get("item-material") != null) {
-                itemMat = Material.matchMaterial(String.valueOf(e.get("item-material")));
-                itemAmount = e.get("item-amount") instanceof Number n ? n.intValue() : 1;
-            }
-            String rankId = e.get("rank-id") != null ? String.valueOf(e.get("rank-id")) : null;
-            String crateId = e.get("crate-id") != null ? String.valueOf(e.get("crate-id")) : null;
-            int crateAmount = e.get("crate-amount") instanceof Number n ? n.intValue() : 1;
-            String command = e.get("command") != null ? String.valueOf(e.get("command")) : null;
-
-            items.add(new StoreItem(id, icon, display, description, price, action,
-                    itemMat, itemAmount, rankId, crateId, crateAmount, command));
+            categories.add(category);
         }
+    }
+
+    private StoreItem parseItem(Map<?, ?> e) {
+        String id = String.valueOf(e.get("id"));
+
+        Object iconObj = e.get("icon");
+        Material icon = Material.matchMaterial(iconObj != null ? String.valueOf(iconObj) : "STONE");
+        if (icon == null) icon = Material.STONE;
+
+        Object displayObj = e.get("display-name");
+        String display = displayObj != null ? String.valueOf(displayObj) : id;
+
+        String description = e.get("description") != null ? String.valueOf(e.get("description")) : "";
+        long price = e.get("price") instanceof Number n ? n.longValue() : 0;
+
+        Object actionObj = e.get("action");
+        String actionStr = actionObj != null ? String.valueOf(actionObj) : "COMMAND";
+        StoreItem.Action action;
+        try {
+            action = StoreItem.Action.valueOf(actionStr.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            action = StoreItem.Action.COMMAND;
+        }
+
+        Material itemMat = null;
+        int itemAmount = 1;
+        if (e.get("item-material") != null) {
+            itemMat = Material.matchMaterial(String.valueOf(e.get("item-material")));
+            itemAmount = e.get("item-amount") instanceof Number n ? n.intValue() : 1;
+        }
+        String rankId = e.get("rank-id") != null ? String.valueOf(e.get("rank-id")) : null;
+        String crateId = e.get("crate-id") != null ? String.valueOf(e.get("crate-id")) : null;
+        int crateAmount = e.get("crate-amount") instanceof Number n ? n.intValue() : 1;
+        String command = e.get("command") != null ? String.valueOf(e.get("command")) : null;
+
+        return new StoreItem(id, icon, display, description, price, action,
+                itemMat, itemAmount, rankId, crateId, crateAmount, command);
     }
 
     private void createDefaultFile() {
         FileConfiguration cfg = new YamlConfiguration();
-        List<Map<String, Object>> entries = new ArrayList<>();
 
-        entries.add(entry("crate_common", "ENDER_CHEST", "&aCommon Crate Key",
+        cfg.set("settings.bundle-discount-3", 0.10);
+        cfg.set("settings.bundle-discount-9", 0.20);
+
+        // Kategorie: Crates
+        cfg.set("categories.crates.display-name", "&aCrates");
+        cfg.set("categories.crates.icon", "ENDER_CHEST");
+        List<Map<String, Object>> crateItems = new ArrayList<>();
+        crateItems.add(itemMap("crate_common", "ENDER_CHEST", "&aCommon Crate",
                 "&7Öffnet eine Common Crate", 500, "CRATE_KEY", null, 0, null, "common", 1, null));
+        cfg.set("categories.crates.items", crateItems);
 
-        entries.add(entry("rank_vip", "DIAMOND", "&b&lVIP Rang",
+        // Kategorie: Ränge
+        cfg.set("categories.ranks.display-name", "&bRänge");
+        cfg.set("categories.ranks.icon", "DIAMOND");
+        List<Map<String, Object>> rankItems = new ArrayList<>();
+        rankItems.add(itemMap("rank_vip", "DIAMOND", "&b&lVIP Rang",
                 "&7Schaltet den VIP-Rang frei", 5000, "RANK", null, 0, "vip", null, 0, null));
+        cfg.set("categories.ranks.items", rankItems);
 
-        entries.add(entry("apple_pack", "GOLDEN_APPLE", "&6Goldene Äpfel (x8)",
+        // Kategorie: Items
+        cfg.set("categories.items.display-name", "&eItems");
+        cfg.set("categories.items.icon", "GOLDEN_APPLE");
+        List<Map<String, Object>> plainItems = new ArrayList<>();
+        plainItems.add(itemMap("apple_pack", "GOLDEN_APPLE", "&6Goldene Äpfel (x8)",
                 "&78 goldene Äpfel für dein Inventar", 300, "ITEM", "GOLDEN_APPLE", 8, null, null, 0, null));
-
-        cfg.set("items", entries);
+        cfg.set("categories.items.items", plainItems);
 
         try {
             if (!plugin.getDataFolder().exists()) plugin.getDataFolder().mkdirs();
@@ -93,9 +135,9 @@ public class StoreManager {
         }
     }
 
-    private Map<String, Object> entry(String id, String icon, String display, String description, long price,
-                                       String action, String itemMaterial, int itemAmount, String rankId,
-                                       String crateId, int crateAmount, String command) {
+    private Map<String, Object> itemMap(String id, String icon, String display, String description, long price,
+                                         String action, String itemMaterial, int itemAmount, String rankId,
+                                         String crateId, int crateAmount, String command) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("icon", icon);
@@ -110,12 +152,31 @@ public class StoreManager {
         return m;
     }
 
-    public List<StoreItem> getItems() { return items; }
+    public List<StoreCategory> getCategories() { return categories; }
 
-    /** Versucht, den Kauf abzuwickeln. Gibt eine Nachricht für den Spieler zurück. */
-    public String purchase(Player player, StoreItem item) {
-        if (!plugin.economy().withdraw(player, item.getPrice())) {
-            return "§cDu hast nicht genug Credits (" + plugin.economy().format(item.getPrice()) + " benötigt).";
+    public StoreCategory getCategory(String id) {
+        return categories.stream().filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+    }
+
+    public double getBundleDiscount3() { return bundleDiscount3; }
+    public double getBundleDiscount9() { return bundleDiscount9; }
+
+    /** Preis für ein Bundle einer bestimmten Größe (1, 3 oder 9) unter Anwendung des Rabatts. */
+    public long bundlePrice(StoreItem item, int multiplier) {
+        double discount = switch (multiplier) {
+            case 3 -> bundleDiscount3;
+            case 9 -> bundleDiscount9;
+            default -> 0.0;
+        };
+        return Math.round(item.getPrice() * multiplier * (1.0 - discount));
+    }
+
+    /** Versucht, den Kauf abzuwickeln (multiplier = 1, 3 oder 9 für Crate-Bundles). Gibt eine Nachricht zurück. */
+    public String purchase(Player player, StoreItem item, int multiplier) {
+        long price = item.getAction() == StoreItem.Action.CRATE_KEY ? bundlePrice(item, multiplier) : item.getPrice();
+
+        if (!plugin.economy().withdraw(player, price)) {
+            return "§cDu hast nicht genug Credits (" + plugin.economy().format(price) + " benötigt).";
         }
 
         switch (item.getAction()) {
@@ -135,7 +196,8 @@ public class StoreManager {
             case CRATE_KEY -> {
                 var crateType = plugin.crates().getCrateType(item.getCrateId());
                 if (crateType != null) {
-                    plugin.crates().giveKey(player, crateType, Math.max(1, item.getCrateAmount()));
+                    int amount = Math.max(1, item.getCrateAmount()) * multiplier;
+                    plugin.crates().giveKey(player, crateType, amount);
                 }
             }
             case COMMAND -> {
@@ -144,7 +206,8 @@ public class StoreManager {
             }
         }
 
-        return "§aDu hast §f" + colorize(item.getDisplayName()) + " §afür " + plugin.economy().format(item.getPrice()) + " gekauft!";
+        String amountLabel = (item.getAction() == StoreItem.Action.CRATE_KEY && multiplier > 1) ? multiplier + "x " : "";
+        return "§aDu hast §f" + amountLabel + colorize(item.getDisplayName()) + " §afür " + plugin.economy().format(price) + " gekauft!";
     }
 
     private String colorize(String s) {

@@ -27,7 +27,10 @@ public class CrateKeyUtil {
         ItemMeta meta = item.getItemMeta();
 
         meta.displayName(colorize("&e&l" + crateType.getDisplayName().replace("&", "").toUpperCase(Locale.ROOT) + " &7Key"));
-        meta.lore(buildLore(crateType));
+        List<Component> lore = new ArrayList<>(previewLines(crateType));
+        lore.add(colorize(""));
+        lore.add(colorize("&e&lRechtsklick &7auf den Boden zum Öffnen"));
+        meta.lore(lore);
 
         meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, crateType.getId());
         item.setItemMeta(meta);
@@ -35,11 +38,12 @@ public class CrateKeyUtil {
     }
 
     /**
-     * Baut die Vorschau-Lore im Stil "gruppiert nach Kategorie, mit
+     * Baut die Vorschau-Zeilen im Stil "gruppiert nach Kategorie, mit
      * Prozentchance dahinter", wie z.B. bei bekannten Crate-Plugins üblich.
      * Rewards ohne 'category' landen in einer Sammel-Gruppe am Ende.
+     * Öffentlich, damit der Store dieselbe Vorschau in seinen Icons zeigen kann.
      */
-    private List<Component> buildLore(CrateType crateType) {
+    public List<Component> previewLines(CrateType crateType) {
         List<Component> lore = new ArrayList<>();
         lore.add(colorize(""));
 
@@ -69,8 +73,6 @@ public class CrateKeyUtil {
             }
         }
 
-        lore.add(colorize(""));
-        lore.add(colorize("&e&lRechtsklick &7auf den Boden zum Öffnen"));
         return lore;
     }
 

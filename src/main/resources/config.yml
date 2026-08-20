@@ -7,6 +7,8 @@ scoreboard:
     - "&7------------------"
     - "&fSpieler: &a%player_name%"
     - "&fRang: &e%customcore_rank%"
+    - "&fCredits: &6%customcore_credits%"
+    - "&fSpielzeit: &b%customcore_playtime%"
     - "&7------------------"
     - "&fOnline: &a%server_online%"
 

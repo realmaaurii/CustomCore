@@ -1,18 +1,22 @@
 package com.customcore.plugin.crates;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
  * Eine laufende "Wähle X von Y"-Kisten-Session für einen Spieler.
  * Merkt sich, welche der platzierten Kisten schon angeklickt wurden,
- * und wie viele Klicks noch erlaubt sind.
+ * wie viele Klicks noch erlaubt sind, und welche Bodenblöcke für den
+ * Quarz-Effekt verändert wurden (für die Wiederherstellung beim Schließen).
  */
 public class CrateSession {
 
@@ -22,6 +26,9 @@ public class CrateSession {
     private final Set<Location> clicked = new HashSet<>();
     private final int maxPicks; // z.B. 6
     private BukkitTask timeoutTask;
+
+    // Boden-Blöcke, die für den Quarz-Effekt verändert wurden: Position -> Original-Material
+    private final Map<Location, Material> originalFloorBlocks = new LinkedHashMap<>();
 
     public CrateSession(Player owner, CrateType crateType, List<Location> chestLocations, int maxPicks) {
         this.owner = owner.getUniqueId();
@@ -33,6 +40,7 @@ public class CrateSession {
     public UUID getOwner() { return owner; }
     public CrateType getCrateType() { return crateType; }
     public List<Location> getChestLocations() { return chestLocations; }
+    public Map<Location, Material> getOriginalFloorBlocks() { return originalFloorBlocks; }
 
     public boolean isFinished() {
         return clicked.size() >= maxPicks;

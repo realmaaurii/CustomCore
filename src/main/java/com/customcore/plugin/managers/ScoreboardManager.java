@@ -154,6 +154,10 @@ public class ScoreboardManager implements Listener {
         if (plugin.ranks() != null) {
             result = result.replace("%customcore_rank%", plugin.ranks().getPlayerRank(player).getDisplayName());
         }
+        if (plugin.economy() != null) {
+            result = result.replace("%customcore_credits%", String.valueOf(plugin.economy().getBalance(player)));
+        }
+        result = result.replace("%customcore_playtime%", com.customcore.plugin.util.PlaytimeUtil.format(player));
         return result;
     }
 

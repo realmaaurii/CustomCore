@@ -70,49 +70,74 @@ Bei jedem weiteren Push wird automatisch neu gebaut, du musst also nach
 Ein eigenständiges Guthabensystem (keine Abhängigkeit von Vault nötig) -
 Guthaben wird in `plugins/CustomCore/economy.yml` gespeichert. Spieler
 prüfen ihr Guthaben mit `/credits`, überweisen sich gegenseitig Geld mit
-`/pay <spieler> <betrag>`.
+`/pay <spieler> <betrag>`. Credits und Spielzeit lassen sich auch im
+Scoreboard anzeigen, siehe Platzhalter-Abschnitt unten.
 
-`/store` öffnet ein Inventory-Menü mit kaufbaren Einträgen, konfiguriert in
-`plugins/CustomCore/store.yml`:
+`/store` öffnet ein Kategorie-Menü (z. B. "Crates", "Ränge", "Items"),
+konfiguriert in `plugins/CustomCore/store.yml`:
 
 ```yaml
-items:
-  - id: crate_common
-    icon: ENDER_CHEST
-    display-name: "&aCommon Crate Key"
-    description: "&7Öffnet eine Common Crate"
-    price: 500
-    action: CRATE_KEY
-    crate-id: common
-    crate-amount: 1
+settings:
+  bundle-discount-3: 0.10   # 10% Rabatt beim 3er-Bundle
+  bundle-discount-9: 0.20   # 20% Rabatt beim 9er-Bundle
 
-  - id: rank_vip
+categories:
+  crates:
+    display-name: "&aCrates"
+    icon: ENDER_CHEST
+    items:
+      - id: crate_common
+        icon: ENDER_CHEST
+        display-name: "&aCommon Crate"
+        description: "&7Öffnet eine Common Crate"
+        price: 500
+        action: CRATE_KEY
+        crate-id: common
+        crate-amount: 1
+
+  ranks:
+    display-name: "&bRänge"
     icon: DIAMOND
-    display-name: "&b&lVIP Rang"
-    description: "&7Schaltet den VIP-Rang frei"
-    price: 5000
-    action: RANK
-    rank-id: vip
+    items:
+      - id: rank_vip
+        icon: DIAMOND
+        display-name: "&b&lVIP Rang"
+        description: "&7Schaltet den VIP-Rang frei"
+        price: 5000
+        action: RANK
+        rank-id: vip
 ```
 
-`action` kann sein:
+Jede Kategorie ist ein eigener Menüpunkt im Hauptmenü; ein Klick öffnet
+die Liste ihrer Angebote mit "Zurück"-Button. `action` kann sein:
 - `ITEM` - gibt ein Item (`item-material`, `item-amount`)
 - `RANK` - setzt den Rang des Spielers (`rank-id`, muss in `ranks.yml` existieren)
 - `CRATE_KEY` - gibt einen Crate-Key (`crate-id`, `crate-amount`)
 - `COMMAND` - führt einen Befehl als Konsole aus (`command`, `%player%` wird ersetzt)
 
-Crates können außerdem direkt Credits als Belohnung ausschütten
-(`type: CREDITS` in `crates.yml`, siehe unten) - so lässt sich ein
-kompletter Kreislauf aus Spielen → Credits verdienen → im Store ausgeben
-bauen.
+**Crate-Vorschau & Bundles:** Bei `action: CRATE_KEY` zeigt das Store-Icon
+automatisch dieselbe gruppierte Belohnungs-Vorschau wie der Crate-Key
+selbst (Kategorien + Prozentchancen) - und bietet direkt im Menü drei
+Kaufoptionen ohne weitere Konfiguration nötig:
+- **Linksklick** → 1x zum Grundpreis
+- **Shift+Klick** → 3x mit Rabatt (`bundle-discount-3`)
+- **Rechtsklick** → 9x mit Rabatt (`bundle-discount-9`)
+
+Crates können außerdem direkt Credits, Ränge oder weitere Crate-Keys als
+Belohnung ausschütten (siehe unten) - so lässt sich ein kompletter
+Kreislauf aus Spielen → Credits verdienen → im Store ausgeben bauen.
 
 ## Crate-System ("Wähle 6 von 8")
 
 Ein Spieler mit einem Crate-Key (standardmäßig eine benannte Enderchest,
 per `/crate give <spieler> common` erhältlich) rechtsklickt damit auf den
-Boden. Um ihn herum erscheinen 8 normale Kisten im Kreis. Klickt er eine
-an, verschwindet sie sofort und er bekommt zufällig eine Belohnung aus dem
+Boden. Um ihn herum erscheinen 8 Enderchests in 4 Paaren (Norden/Osten/
+Süden/Westen) mit einer sichtbaren Lücke zwischen den beiden Kisten pro
+Richtung, und der Boden ringsum verwandelt sich sichtbar in Quarzblöcke
+(wird beim Abschluss wieder zurückgesetzt). Klickt er eine Kiste an,
+verschwindet sie sofort und er bekommt zufällig eine Belohnung aus dem
 Pool (gewichtete Zufallsauswahl) – kein Kisten-Inventar zum Durchsuchen,
+
 die Belohnung wird direkt ausgezahlt. Nach 6 angeklickten Kisten
 verschwinden die restlichen 2 automatisch und der Boden wird wieder frei.
 Falls eine Crate 45 Sekunden lang nicht abgeschlossen wird, wird sie
@@ -148,14 +173,26 @@ Tooltip des Crate-Keys (z. B. "LEGENDARY ITEMS", "EPIC ITEMS", "COMMON
 ITEMS") - alle Belohnungen mit derselben Kategorie werden zusammen unter
 einer farbigen Überschrift angezeigt, ähnlich wie bei bekannten
 Crate-Plugins. Ohne `category` landen Einträge in einer Sammelgruppe
-"WEITERE BELOHNUNGEN". `type` kann `ITEM`, `CREDITS` (mit `credits: <zahl>`)
-oder `COMMAND` sein - bei `COMMAND` wird der Befehl als Konsole ausgeführt,
-`%player%` wird durch den Spielernamen ersetzt.
+"WEITERE BELOHNUNGEN".
+
+`type` kann sein:
+- `ITEM` - gibt ein Item (`material`, `amount`)
+- `CREDITS` - schreibt Credits gut (`credits: <zahl>`)
+- `RANK` - setzt den Rang des Spielers (`rank-id`, muss in `ranks.yml` existieren)
+- `CRATE_KEY` - gibt einen weiteren Crate-Key, auch einer anderen Crate möglich (`crate-id`, `crate-amount`)
+- `COMMAND` - führt einen Befehl als Konsole aus (`command`, `%player%` wird ersetzt)
+
+**Sound/Effekt beim Ziehen:** `CREDITS`, `RANK` und `CRATE_KEY` gelten als
+"gute" Belohnungen und lösen einen Firework-Explosion-Sound samt Partikel
+aus statt des normalen Level-Up-Sounds - passt automatisch, keine
+zusätzliche Konfiguration nötig.
 
 Die 8 Kisten erscheinen als Enderchests in 4 Paaren um den Spieler herum
 (Norden/Osten/Süden/Westen), mit einer sichtbaren Lücke zwischen den
-beiden Kisten pro Richtung. Dafür wird auf jeder Seite ca. 3-4 Blöcke
-freier Platz benötigt.
+beiden Kisten pro Richtung. Der Boden ringsum (Radius 4 Blöcke) färbt
+sich währenddessen in Quarzblöcke, damit gut sichtbar ist, dass gerade
+eine Crate geöffnet wird - wird beim Abschluss automatisch zurückgesetzt.
+Dafür wird auf jeder Seite ca. 3-4 Blöcke freier Platz benötigt.
 
 Nach Änderungen an der Datei reicht `/crate reload` (bereits ausgeteilte
 Keys zeigen die alte Lore weiter an - neu vergebene Keys per `/crate give`
@@ -165,8 +202,18 @@ Du kannst beliebig viele eigene Crate-Typen unter `crates.<id>` in der
 Datei hinzufügen (z. B. `crates.legendary`) – jeder erhält automatisch
 sein eigenes Key-Item über `/crate give <spieler> <id>`.
 
+## Scoreboard-Platzhalter
+
+Aktuell unterstützt: `%player_name%`, `%server_online%`, `%customcore_rank%`,
+`%customcore_credits%`, `%customcore_playtime%`. Neue Server-Installationen
+haben Credits/Spielzeit bereits in der Standard-`scoreboard.yml` - bei
+bestehenden Installationen fügst du sie mit
+`/scoreboard addline &fCredits: &6%customcore_credits%` bzw.
+`/scoreboard addline &fSpielzeit: &b%customcore_playtime%` hinzu.
+
 Alle Admin-Permissions sind standardmäßig `op` – vergib sie über
 LuckPerms/Vault gezielt an Moderatoren, falls gewünscht, statt vollen OP zu geben.
+
 
 ## Platzhalter
 

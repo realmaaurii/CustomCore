@@ -1,10 +1,10 @@
 package com.customcore.plugin.crates;
 
 import com.customcore.plugin.CustomCorePlugin;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
@@ -24,16 +24,15 @@ public class CrateManager {
     private final Map<String, CrateType> crateTypes = new LinkedHashMap<>();
     private final CrateKeyUtil keyUtil;
 
-    // Läuft aktuell: Blockposition -> Session (für schnellen Lookup bei Klicks)
     private final Map<Location, CrateSession> chestToSession = new HashMap<>();
-    // Ein Spieler darf immer nur eine Session gleichzeitig offen haben
     private final Map<UUID, CrateSession> activeByPlayer = new HashMap<>();
 
     private static final int TOTAL_CHESTS = 8;
     private static final int PICKS_ALLOWED = 6;
-    private static final int DISTANCE = 3;   // Abstand der Kisten-Paare vom Spieler
-    private static final int GAP_OFFSET = 1; // halbe Lücke zwischen den 2 Kisten je Richtung
-    private static final long TIMEOUT_TICKS = 20L * 45; // 45 Sekunden, dann Auto-Reset
+    private static final int DISTANCE = 3;
+    private static final int GAP_OFFSET = 1;
+    private static final int FLOOR_RADIUS = 4;
+    private static final long TIMEOUT_TICKS = 20L * 45;
 
     public CrateManager(CustomCorePlugin plugin) {
         this.plugin = plugin;
@@ -79,6 +78,13 @@ public class CrateManager {
                     long creditsAmount = rm.get("credits") instanceof Number n ? n.longValue()
                             : (rm.get("amount") instanceof Number n2 ? n2.longValue() : 0);
                     type.addReward(CrateReward.credits(rewardId, display, weight, category, creditsAmount));
+                } else if ("RANK".equalsIgnoreCase(typeStr)) {
+                    String rankId = String.valueOf(rm.get("rank-id"));
+                    type.addReward(CrateReward.rank(rewardId, display, weight, category, rankId));
+                } else if ("CRATE_KEY".equalsIgnoreCase(typeStr)) {
+                    String targetCrateId = rm.get("crate-id") != null ? String.valueOf(rm.get("crate-id")) : id;
+                    int crateAmount = rm.get("crate-amount") instanceof Number n ? n.intValue() : 1;
+                    type.addReward(CrateReward.crateKey(rewardId, display, weight, category, targetCrateId, crateAmount));
                 } else {
                     Object materialObj = rm.get("material");
                     String materialName = materialObj != null ? String.valueOf(materialObj) : "STONE";
@@ -105,9 +111,11 @@ public class CrateManager {
 
         List<Map<String, Object>> rewards = new ArrayList<>();
         rewards.add(rewardMap("elytra", "ITEM", "&5Elytra", 1, legendary, "ELYTRA", 1, null));
-        rewards.add(rewardMap("apple", "ITEM", "&6Goldener Apfel", 4, legendary, "GOLDEN_APPLE", 1, null));
+        rewards.add(rankMap("rank_vip", "&bVIP Rang", 2, legendary, "vip"));
         rewards.add(creditsMap("credits_big", "&e1000 Credits", 5, legendary, 1000));
-        rewards.add(rewardMap("xp", "COMMAND", "&d150 XP", 6, epic, null, 0, "xp add %player% 150"));
+        rewards.add(crateKeyMap("bonus_key", "&a1x Common Crate Key", 4, legendary, "common", 1));
+        rewards.add(rewardMap("apple", "ITEM", "&6Goldener Apfel", 6, epic, "GOLDEN_APPLE", 1, null));
+        rewards.add(rewardMap("xp", "COMMAND", "&d150 XP", 8, epic, null, 0, "xp add %player% 150"));
         rewards.add(rewardMap("diamonds", "ITEM", "&b5 Diamanten", 10, epic, "DIAMOND", 5, null));
         rewards.add(rewardMap("emerald", "ITEM", "&a8 Smaragde", 12, epic, "EMERALD", 8, null));
         rewards.add(creditsMap("credits_small", "&e100 Credits", 15, epic, 100));
@@ -148,6 +156,30 @@ public class CrateManager {
         return m;
     }
 
+    private Map<String, Object> rankMap(String id, String display, int weight, String category, String rankId) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id);
+        m.put("type", "RANK");
+        m.put("display-name", display);
+        m.put("weight", weight);
+        if (category != null) m.put("category", category);
+        m.put("rank-id", rankId);
+        return m;
+    }
+
+    private Map<String, Object> crateKeyMap(String id, String display, int weight, String category,
+                                             String crateId, int crateAmount) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id);
+        m.put("type", "CRATE_KEY");
+        m.put("display-name", display);
+        m.put("weight", weight);
+        if (category != null) m.put("category", category);
+        m.put("crate-id", crateId);
+        m.put("crate-amount", crateAmount);
+        return m;
+    }
+
     public CrateType getCrateType(String id) { return crateTypes.get(id); }
     public Collection<CrateType> getAllCrateTypes() { return crateTypes.values(); }
 
@@ -157,10 +189,6 @@ public class CrateManager {
         player.getInventory().addItem(key);
     }
 
-    // ------------------------------------------------------------------
-    // Crate öffnen: 8 Enderchests um den SPIELER platzieren - 4 Paare
-    // (Nord/Ost/Süd/West), je 2 Kisten mit sichtbarer Lücke dazwischen.
-    // ------------------------------------------------------------------
     public boolean openCrate(Player player, Block groundBlock, CrateType crateType) {
         if (activeByPlayer.containsKey(player.getUniqueId())) {
             player.sendMessage("§cDu hast bereits eine offene Crate - schließe sie zuerst ab!");
@@ -172,16 +200,16 @@ public class CrateManager {
         int centerZ = player.getLocation().getBlockZ();
 
         int[][] directions = {
-                {0, -1},  // Norden
-                {1, 0},   // Osten
-                {0, 1},   // Süden
-                {-1, 0},  // Westen
+                {0, -1},
+                {1, 0},
+                {0, 1},
+                {-1, 0},
         };
 
         List<Location> positions = new ArrayList<>();
         for (int[] dir : directions) {
             int dx = dir[0], dz = dir[1];
-            int perpX = -dz, perpZ = dx; // 90° gedreht, für den Seitenversatz
+            int perpX = -dz, perpZ = dx;
 
             int baseX = centerX + dx * DISTANCE;
             int baseZ = centerZ + dz * DISTANCE;
@@ -202,6 +230,18 @@ public class CrateManager {
         }
 
         CrateSession session = new CrateSession(player, crateType, positions, PICKS_ALLOWED);
+
+        for (int dx = -FLOOR_RADIUS; dx <= FLOOR_RADIUS; dx++) {
+            for (int dz = -FLOOR_RADIUS; dz <= FLOOR_RADIUS; dz++) {
+                if (dx * dx + dz * dz > FLOOR_RADIUS * FLOOR_RADIUS) continue;
+                Location floorLoc = new Location(player.getWorld(), centerX + dx, centerY - 1, centerZ + dz);
+                Block floorBlock = floorLoc.getBlock();
+                if (floorBlock.getType().isAir()) continue;
+                session.getOriginalFloorBlocks().put(normalize(floorLoc), floorBlock.getType());
+                floorBlock.setType(Material.QUARTZ_BLOCK);
+            }
+        }
+
         activeByPlayer.put(player.getUniqueId(), session);
         for (Location loc : positions) {
             chestToSession.put(normalize(loc), session);
@@ -222,27 +262,26 @@ public class CrateManager {
         return true;
     }
 
-    /** Wird vom Listener aufgerufen, wenn ein Spieler eine der platzierten Kisten anklickt. */
     public boolean handleChestClick(Player player, Block clickedChest) {
         Location norm = normalize(clickedChest.getLocation());
         CrateSession session = chestToSession.get(norm);
-        if (session == null) return false; // keine Session-Kiste, normal weiterlaufen lassen
+        if (session == null) return false;
 
         if (!session.getOwner().equals(player.getUniqueId())) {
             player.sendMessage("§cDas ist nicht deine Crate!");
             return true;
         }
         if (session.isAlreadyClicked(norm)) {
-            return true; // bereits angeklickt, ignorieren
+            return true;
         }
 
         session.markClicked(norm);
-        clickedChest.setType(Material.AIR); // Kiste "verbraucht"
+        clickedChest.setType(Material.AIR);
 
         CrateReward reward = session.getCrateType().rollReward();
         giveReward(player, reward);
+        playRewardEffect(player, reward);
 
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.4f);
         player.sendMessage("§a✔ Du hast erhalten: " + (reward != null ? colorize(reward.getDisplayName()) : "§7(nichts)"));
         player.sendMessage("§7Noch " + session.getRemainingPicks() + " Kisten übrig zu wählen.");
 
@@ -269,12 +308,36 @@ public class CrateManager {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
             }
             case CREDITS -> plugin.economy().deposit(player, reward.getCredits());
+            case RANK -> {
+                var rank = plugin.ranks().getRank(reward.getRankId());
+                if (rank != null) {
+                    plugin.ranks().setPlayerRank(player, reward.getRankId());
+                    plugin.tablist().render(player);
+                    plugin.scoreboards().render(player);
+                }
+            }
+            case CRATE_KEY -> {
+                var targetType = getCrateType(reward.getCrateId());
+                if (targetType != null) {
+                    giveKey(player, targetType, Math.max(1, reward.getCrateAmount()));
+                }
+            }
         }
     }
 
-    /** Entfernt verbleibende Kisten wieder, räumt die Session auf. */
+    private void playRewardEffect(Player player, CrateReward reward) {
+        if (reward != null && reward.isSpecial()) {
+            player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1f, 1f);
+            player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1f, 1.2f);
+            player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation().add(0, 1, 0), 40, 0.5, 0.5, 0.5, 0.1);
+        } else {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.4f);
+        }
+    }
+
     private void closeSession(CrateSession session) {
         session.cancelTimeout();
+
         for (Location loc : session.getChestLocations()) {
             Location norm = normalize(loc);
             chestToSession.remove(norm);
@@ -283,6 +346,14 @@ public class CrateManager {
                 block.setType(Material.AIR);
             }
         }
+
+        for (Map.Entry<Location, Material> entry : session.getOriginalFloorBlocks().entrySet()) {
+            Block block = entry.getKey().getBlock();
+            if (block.getType() == Material.QUARTZ_BLOCK) {
+                block.setType(entry.getValue());
+            }
+        }
+
         activeByPlayer.remove(session.getOwner());
     }
 
