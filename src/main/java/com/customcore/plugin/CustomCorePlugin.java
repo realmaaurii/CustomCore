@@ -1,7 +1,9 @@
 package com.customcore.plugin;
 
 import com.customcore.plugin.commands.*;
+import com.customcore.plugin.crates.CrateManager;
 import com.customcore.plugin.gui.ScoreboardEditGUI;
+import com.customcore.plugin.listeners.CrateListener;
 import com.customcore.plugin.managers.*;
 import com.customcore.plugin.script.ScriptManager;
 import com.customcore.plugin.util.ChatInputManager;
@@ -18,6 +20,7 @@ public class CustomCorePlugin extends JavaPlugin {
     private ScriptManager scriptManager;
     private ChatInputManager chatInputManager;
     private ScoreboardEditGUI scoreboardEditGUI;
+    private CrateManager crateManager;
 
     @Override
     public void onEnable() {
@@ -32,10 +35,12 @@ public class CustomCorePlugin extends JavaPlugin {
         this.chatManager = new ChatManager(this);
         this.scriptManager = new ScriptManager(this);
         this.scoreboardEditGUI = new ScoreboardEditGUI(this);
+        this.crateManager = new CrateManager(this);
 
         rankManager.load();
         scoreboardManager.load();
         tablistManager.load();
+        crateManager.load();
         scriptManager.setup();
         if (getConfig().getBoolean("scripts.auto-load", true)) {
             scriptManager.loadAllScripts();
@@ -47,6 +52,7 @@ public class CustomCorePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(scoreboardManager, this);
         getServer().getPluginManager().registerEvents(tablistManager, this);
         getServer().getPluginManager().registerEvents(scoreboardEditGUI, this);
+        getServer().getPluginManager().registerEvents(new CrateListener(this), this);
 
         // Commands
         getCommand("scoreboard").setExecutor(new ScoreboardCommand(this));
@@ -58,6 +64,8 @@ public class CustomCorePlugin extends JavaPlugin {
         getCommand("chatcolor").setExecutor(new ChatColorCommand(this));
         getCommand("ccscript").setExecutor(new ScriptCommand(this));
         getCommand("ccscript").setTabCompleter(new ScriptCommand(this));
+        getCommand("crate").setExecutor(new CrateCommand(this));
+        getCommand("crate").setTabCompleter((CrateCommand) getCommand("crate").getExecutor());
 
         getLogger().info("CustomCore wurde aktiviert.");
     }
@@ -81,4 +89,5 @@ public class CustomCorePlugin extends JavaPlugin {
     public ScriptManager scripts() { return scriptManager; }
     public ChatInputManager chatInput() { return chatInputManager; }
     public ScoreboardEditGUI scoreboardGUI() { return scoreboardEditGUI; }
+    public CrateManager crates() { return crateManager; }
 }

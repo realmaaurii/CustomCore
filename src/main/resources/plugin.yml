@@ -26,6 +26,10 @@ commands:
     description: Verwaltet JS-Skripte (laden/entladen/reload)
     usage: /ccscript <reload|list|run>
     permission: customcore.script.admin
+  crate:
+    description: Verwaltet Crates und vergibt Crate-Keys
+    usage: /crate <give|list|reload>
+    permission: customcore.crate.admin
 
 permissions:
   customcore.scoreboard.admin:
@@ -42,4 +46,7 @@ permissions:
     default: false
   customcore.script.admin:
     description: Zugriff auf Script-Verwaltung
+    default: op
+  customcore.crate.admin:
+    description: Zugriff auf Crate-Verwaltung (Keys vergeben, reload)
     default: op
